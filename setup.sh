@@ -14,11 +14,11 @@ if [ -L "$CHOSEN_LINK" ]; then
 fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
+
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
 pkg upgrade -y &
 
-# xử lý ~/storage
 echo "[*] Kiểm tra ~/storage..."
 if [ -e "$HOME/storage" ] && [ ! -L "$HOME/storage" ]; then
     echo "[!] ~/storage là thư mục thật. Đang xóa để tạo symlink chuẩn..."
@@ -30,42 +30,39 @@ fi
 echo "[*] Thiết lập quyền truy cập bộ nhớ..."
 termux-setup-storage
 
-# cài gói cần thiết (chạy song song với tải file)
+echo "[*] Cài đặt các gói cần thiết..."
 pkg install -y python tsu libexpat openssl &
 
-# cài pip package (chạy song song với tải file)
+echo "[*] Cài đặt các thư viện Python..."
 pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
 
-# hỏi link mediafire
 echo
-read -p "[?] Nhập link MediaFire (.7z) hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
+read -p "[?] Nhập link MediaFire (.7z) để tải hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
 
-DOWNLOAD_PATH=""
 if [ -n "$MEDIAFIRE_LINK" ]; then
+    DOWNLOAD_DIR="$HOME/storage/downloads"
+    mkdir -p "$DOWNLOAD_DIR"
     FILE_NAME=$(basename "$MEDIAFIRE_LINK")
-    DOWNLOAD_PATH="$HOME/storage/downloads/$FILE_NAME"
+    DOWNLOAD_PATH="$DOWNLOAD_DIR/$FILE_NAME"
+
     echo "[*] Đang tải file từ MediaFire..."
     curl -L "$MEDIAFIRE_LINK" -o "$DOWNLOAD_PATH"
     echo "[*] Đã tải xong: $DOWNLOAD_PATH"
 
-    # Kiểm tra 7z, cài nếu chưa có
     if ! command -v 7z >/dev/null 2>&1; then
         echo "[*] Đang cài p7zip để giải nén..."
         pkg install -y p7zip
     fi
 
-    # Giải nén song song
-    echo "[*] Bắt đầu giải nén $FILE_NAME vào ~/storage/downloads ..."
-    7z x "$DOWNLOAD_PATH" -o"$HOME/storage/downloads" -y &
+    echo "[*] Bắt đầu giải nén $FILE_NAME vào $DOWNLOAD_DIR ..."
+    7z x "$DOWNLOAD_PATH" -o"$DOWNLOAD_DIR" -y &
 fi
 
-# đợi các job background hoàn thành
 wait
 
-# nếu có root thì cài apk trong downloads
 if command -v su >/dev/null 2>&1; then
-    echo "[*] Thiết bị đã root. Tự động cài các file APK trong ~/storage/downloads..."
-    find "$HOME/storage/downloads" -type f -name "*.apk" | while read -r apk; do
+    echo "[*] Thiết bị đã root. Tự động cài các file APK trong $DOWNLOAD_DIR ..."
+    find "$DOWNLOAD_DIR" -type f -name "*.apk" | while read -r apk; do
         echo "[*] Cài đặt APK: $apk"
         su -c "pm install -r '$apk'"
     done
