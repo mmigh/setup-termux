@@ -24,13 +24,7 @@ dpkg --configure -a || true
 echo "[*] Làm sạch apt cache..."
 apt clean || true
 
-echo "[*] Kiểm tra dpkg có lỗi không..."
-if ! dpkg --get-selections >/dev/null 2>&1; then
-    echo "[*] Phát hiện lỗi dpkg, thử cài lại dpkg..."
-    pkg install --reinstall dpkg -y
-fi
-
-echo "[*] Cài đặt binutils để có lệnh 'ar'..."
+echo "[*] Cài đặt binutils để có lệnh 'ar' nếu thiếu..."
 pkg install -y binutils
 
 echo "[*] Cập nhật hệ thống..."
@@ -49,7 +43,7 @@ echo "[*] Thiết lập quyền truy cập bộ nhớ..."
 termux-setup-storage
 
 echo "[*] Cài đặt các gói cần thiết..."
-pkg install -y python tsu libexpat openssl &
+pkg install -y python tsu libexpat openssl
 
 echo "[*] Cài đặt các thư viện Python..."
 pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
@@ -66,25 +60,11 @@ if [ -n "$MEDIAFIRE_LINK" ]; then
     echo "[*] Đang tải file từ MediaFire..."
     curl -L "$MEDIAFIRE_LINK" -o "$DOWNLOAD_PATH"
     echo "[*] Đã tải xong: $DOWNLOAD_PATH"
-
-    if ! command -v 7z >/dev/null 2>&1; then
-        echo "[*] Đang cài p7zip để giải nén..."
-        pkg install -y p7zip
-    fi
-
-    echo "[*] Bắt đầu giải nén $FILE_NAME vào $DOWNLOAD_DIR ..."
-    7z x "$DOWNLOAD_PATH" -o"$DOWNLOAD_DIR" -y &
+else
+    echo "[*] Bỏ qua bước tải file."
 fi
 
 wait
-
-if command -v su >/dev/null 2>&1; then
-    echo "[*] Thiết bị đã root. Tự động cài các file APK trong $DOWNLOAD_DIR ..."
-    find "$DOWNLOAD_DIR" -type f -name "*.apk" | while read -r apk; do
-        echo "[*] Cài đặt APK: $apk"
-        su -c "pm install -r '$apk'"
-    done
-fi
 
 echo
 echo "[✔] Thiết lập hoàn tất!"
