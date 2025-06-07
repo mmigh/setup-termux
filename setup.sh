@@ -5,15 +5,20 @@ set -x
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-# Kiểm tra ~/storage đã tồn tại & là symlink chưa
-if [ ! -d ~/storage ] || [ ! -L ~/storage ]; then
-  echo "[*] Chưa có ~/storage hoặc không phải symlink, chạy termux-setup-storage..."
-  termux-setup-storage
-else
-  echo "[*] ~/storage đã tồn tại và là symlink, bỏ qua thiết lập lại."
+# Xử lý ~/storage nếu không phải symlink
+if [ -e ~/storage ] && [ ! -L ~/storage ]; then
+    echo "[!] Thư mục ~/storage tồn tại nhưng không phải là symlink. Đang xóa để tạo lại..."
+    rm -rf ~/storage
 fi
 
-# Bảo đảm python đã cài (pip có sẵn)
+if [ ! -e ~/storage ]; then
+    echo "[*] Đang chạy termux-setup-storage để tạo ~/storage mới..."
+    termux-setup-storage
+else
+    echo "[*] ~/storage đã tồn tại và đúng định dạng, bỏ qua."
+fi
+
+# Cài Python để dùng pip
 pkg install python -y
 
 # Cài mediafire-dl nếu chưa
@@ -21,27 +26,25 @@ if ! pip show mediafire-dl >/dev/null 2>&1; then
     pip install mediafire-dl
 fi
 
-# Nhập link MediaFire (hoặc bỏ trống để skip)
+# Nhập link MediaFire (có thể bỏ qua)
 read -p "[?] Nhập link MediaFire (.7z) hoặc nhấn Enter để bỏ qua: " MF_LINK
 
 DEST_DIR=~/storage/downloads
 ARCHIVE_PATH=""
 extracted=0
 
-# Cài đặt song song các gói cần thiết
+# Cài các gói cần thiết song song
 (
   pkg update -y && pkg upgrade -y
   pkg install tsu libexpat openssl p7zip -y
   pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
 ) &
-
 install_pid=$!
 
-# Nếu có link thì xử lý tải và giải nén
+# Tải và giải nén file nếu có link
 if [ -n "$MF_LINK" ]; then
   echo "[*] Đang tải file .7z từ MediaFire..."
   mediafire-dl "$MF_LINK" -o "$DEST_DIR" &
-
   download_pid=$!
 
   while kill -0 $download_pid 2>/dev/null; do
@@ -69,5 +72,17 @@ else
 fi
 
 wait $install_pid
+
+# Tự động cài tất cả file .apk nếu máy đã root
+if command -v tsu >/dev/null 2>&1; then
+  echo "[*] Đang tìm và cài đặt file APK trong $DEST_DIR ..."
+  for apk in "$DEST_DIR"/*.apk; do
+    [ -f "$apk" ] || continue
+    echo "[*] Cài đặt: $apk"
+    tsu -c "pm install -r \"$apk\"" && echo "[✓] Cài xong $apk" || echo "[!] Cài thất bại $apk"
+  done
+else
+  echo "[!] Máy bạn chưa root hoặc không có lệnh tsu, bỏ qua bước cài APK."
+fi
 
 echo "[✓] Thiết lập hoàn tất!"
