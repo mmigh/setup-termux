@@ -3,8 +3,7 @@ set -e
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-PREFIX="/data/data/com.termux/files/usr"
-MIRROR_DIR="$PREFIX/etc/termux"
+MIRROR_DIR="/data/data/com.termux/files/usr/etc/termux"
 MIRROR_BASE_DIR="$MIRROR_DIR/mirrors"
 CHOSEN_LINK="$MIRROR_DIR/chosen_mirrors"
 
@@ -16,26 +15,23 @@ fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
 
-echo "[*] Xóa lock nếu có..."
-rm -f "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/cache/apt/archives/lock"
+echo "[*] Xóa các file lock apt/dpkg nếu có..."
+rm -f $PREFIX/var/lib/dpkg/lock $PREFIX/var/lib/dpkg/lock-frontend $PREFIX/var/lib/apt/lists/lock $PREFIX/var/cache/apt/archives/lock
 
-echo "[*] Sửa lỗi dpkg nếu có..."
+echo "[*] Cố gắng sửa lỗi dpkg nếu có..."
 dpkg --configure -a || true
 
-echo "[*] Dọn cache apt..."
+echo "[*] Làm sạch apt cache..."
 apt clean || true
 
-# Vá lỗi thiếu ar (thuộc gói binutils)
-if ! command -v ar >/dev/null 2>&1; then
-    echo "[*] Đang cài binutils (để có ar)..."
-    pkg install -y binutils
+echo "[*] Kiểm tra dpkg có lỗi không..."
+if ! dpkg --get-selections >/dev/null 2>&1; then
+    echo "[*] Phát hiện lỗi dpkg, thử cài lại dpkg..."
+    pkg install --reinstall dpkg -y
 fi
 
-# Vá lỗi thiếu liblz4.so.1 (thư viện nén)
-if ! ldconfig -p | grep liblz4.so.1 >/dev/null 2>&1; then
-    echo "[*] Đang cài liblz4..."
-    pkg install -y liblz4
-fi
+echo "[*] Cài đặt binutils để có lệnh 'ar'..."
+pkg install -y binutils
 
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
@@ -56,10 +52,7 @@ echo "[*] Cài đặt các gói cần thiết..."
 pkg install -y python tsu libexpat openssl &
 
 echo "[*] Cài đặt các thư viện Python..."
-pip install --upgrade pip
 pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
-
-wait
 
 echo
 read -p "[?] Nhập link MediaFire (.7z) để tải hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
