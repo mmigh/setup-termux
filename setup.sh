@@ -6,8 +6,13 @@ set -x
 echo "[*] Bắt đầu thiết lập Termux..."
 termux-setup-storage
 
+# Bảo đảm có Python và pip trước
+pkg install python -y
+
 # Cài mediafire-dl nếu chưa
-pip show mediafire-dl >/dev/null 2>&1 || pip install mediafire-dl
+if ! pip show mediafire-dl >/dev/null 2>&1; then
+    pip install mediafire-dl
+fi
 
 # Nhập link MediaFire (hoặc bỏ trống để skip)
 read -p "[?] Nhập link MediaFire (.7z) hoặc nhấn Enter để bỏ qua: " MF_LINK
@@ -16,16 +21,16 @@ DEST_DIR=~/storage/downloads
 ARCHIVE_PATH=""
 extracted=0
 
-# Cài đặt song song gói cần thiết
+# Cài đặt song song các gói cần thiết
 (
   pkg update -y && pkg upgrade -y
-  pkg install python tsu libexpat openssl p7zip -y
+  pkg install tsu libexpat openssl p7zip -y
   pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
 ) &
 
 install_pid=$!
 
-# Nếu người dùng nhập link MediaFire
+# Nếu có link thì xử lý tải và giải nén
 if [ -n "$MF_LINK" ]; then
   echo "[*] Đang tải file .7z từ MediaFire..."
   mediafire-dl "$MF_LINK" -o "$DEST_DIR" &
