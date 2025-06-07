@@ -4,9 +4,16 @@ set -e
 set -x
 
 echo "[*] Bắt đầu thiết lập Termux..."
-termux-setup-storage
 
-# Bảo đảm có Python và pip trước
+# Kiểm tra ~/storage đã tồn tại & là symlink chưa
+if [ ! -d ~/storage ] || [ ! -L ~/storage ]; then
+  echo "[*] Chưa có ~/storage hoặc không phải symlink, chạy termux-setup-storage..."
+  termux-setup-storage
+else
+  echo "[*] ~/storage đã tồn tại và là symlink, bỏ qua thiết lập lại."
+fi
+
+# Bảo đảm python đã cài (pip có sẵn)
 pkg install python -y
 
 # Cài mediafire-dl nếu chưa
