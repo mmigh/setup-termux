@@ -3,7 +3,8 @@ set -e
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-MIRROR_DIR="/data/data/com.termux/files/usr/etc/termux"
+PREFIX="/data/data/com.termux/files/usr"
+MIRROR_DIR="$PREFIX/etc/termux"
 MIRROR_BASE_DIR="$MIRROR_DIR/mirrors"
 CHOSEN_LINK="$MIRROR_DIR/chosen_mirrors"
 
@@ -15,33 +16,30 @@ fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
 
-echo "[*] Kiểm tra và sửa lỗi dpkg nếu có..."
-rm -f /data/data/com.termux/files/usr/var/lib/dpkg/lock*
-rm -f /data/data/com.termux/files/usr/var/lib/apt/lists/lock
-rm -f /data/data/com.termux/files/usr/var/cache/apt/archives/lock
+echo "[*] Xóa lock nếu có..."
+rm -f "$PREFIX/var/lib/dpkg/lock" "$PREFIX/var/lib/dpkg/lock-frontend" "$PREFIX/var/lib/apt/lists/lock" "$PREFIX/var/cache/apt/archives/lock"
+
+echo "[*] Sửa lỗi dpkg nếu có..."
 dpkg --configure -a || true
+
+echo "[*] Dọn cache apt..."
 apt clean || true
+
+# Vá lỗi thiếu ar (thuộc gói binutils)
+if ! command -v ar >/dev/null 2>&1; then
+    echo "[*] Đang cài binutils (để có ar)..."
+    pkg install -y binutils
+fi
+
+# Vá lỗi thiếu liblz4.so.1 (thư viện nén)
+if ! ldconfig -p | grep liblz4.so.1 >/dev/null 2>&1; then
+    echo "[*] Đang cài liblz4..."
+    pkg install -y liblz4
+fi
 
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
 pkg upgrade -y &
-
-# Vá lỗi thiếu liblz4
-echo "[*] Kiểm tra lỗi thiếu liblz4..."
-if ! ldd /data/data/com.termux/files/usr/bin/apt | grep -q liblz4.so.1; then
-    echo "[!] Thiếu liblz4.so.1, đang vá..."
-
-    echo "[*] Cài binutils (để có dpkg-deb)..."
-    pkg install -y binutils
-
-    curl -LO https://packages.termux.org/apt/termux-main/pool/main/libl/liblz4/liblz4_1.9.4-1_aarch64.deb
-
-    echo "[*] Giải nén liblz4_1.9.4-1_aarch64.deb bằng dpkg-deb..."
-    dpkg-deb -x liblz4_1.9.4-1_aarch64.deb liblz4_extracted
-
-    echo "[*] Sao chép liblz4 vào thư mục lib Termux..."
-    cp -v liblz4_extracted/data/data/com.termux/files/usr/lib/liblz4.so* /data/data/com.termux/files/usr/lib/
-fi
 
 echo "[*] Kiểm tra ~/storage..."
 if [ -e "$HOME/storage" ] && [ ! -L "$HOME/storage" ]; then
@@ -58,7 +56,10 @@ echo "[*] Cài đặt các gói cần thiết..."
 pkg install -y python tsu libexpat openssl &
 
 echo "[*] Cài đặt các thư viện Python..."
+pip install --upgrade pip
 pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
+
+wait
 
 echo
 read -p "[?] Nhập link MediaFire (.7z) để tải hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
