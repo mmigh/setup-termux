@@ -13,7 +13,7 @@ yes | pkg update
 yes | pkg install root-repo x11-repo -y
 
 # Tự động đổi repo thông qua script GitHub
-. <(curl -fsSL https://raw.githubusercontent.com/u400822/setup-termux/refs/heads/main/termux-change-repo.sh)
+. <(curl -fsSL https://raw.githubusercontent.com/mmigh/setup-termux/refs/heads/main/termux-change-repo.sh)
 
 # Nâng cấp gói và cài đặt công cụ cần thiết
 yes | pkg upgrade
