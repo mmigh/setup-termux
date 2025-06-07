@@ -15,6 +15,13 @@ fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
 
+echo "[*] Kiểm tra và sửa lỗi dpkg nếu có..."
+rm -f /data/data/com.termux/files/usr/var/lib/dpkg/lock*
+rm -f /data/data/com.termux/files/usr/var/lib/apt/lists/lock
+rm -f /data/data/com.termux/files/usr/var/cache/apt/archives/lock
+dpkg --configure -a || true
+apt clean || true
+
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
 pkg upgrade -y &
