@@ -3,15 +3,17 @@ set -e
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-MIRROR_BASE_DIR="/data/data/com.termux/files/usr/etc/termux/mirrors"
-CHOSEN_LINK="/data/data/com.termux/files/usr/etc/termux/chosen_mirrors"
+MIRROR_DIR="/data/data/com.termux/files/usr/etc/termux"
+MIRROR_BASE_DIR="$MIRROR_DIR/mirrors"
+CHOSEN_LINK="$MIRROR_DIR/chosen_mirrors"
+
+mkdir -p "$MIRROR_DIR"
 
 if [ -L "$CHOSEN_LINK" ]; then
     unlink "$CHOSEN_LINK"
 fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
-
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
 pkg upgrade -y &
