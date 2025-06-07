@@ -3,40 +3,43 @@ set -e
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-MIRROR_DIR="/data/data/com.termux/files/usr/etc/termux"
+# Đặt biến đường dẫn cần thiết
+MIRROR_DIR="$PREFIX/etc/termux"
 MIRROR_BASE_DIR="$MIRROR_DIR/mirrors"
 CHOSEN_LINK="$MIRROR_DIR/chosen_mirrors"
 
+# Tạo thư mục mirror nếu chưa có
 mkdir -p "$MIRROR_DIR"
 
+# Xoá symlink nếu đã tồn tại
 if [ -L "$CHOSEN_LINK" ]; then
     unlink "$CHOSEN_LINK"
 fi
-ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
-echo "[*] Đã chọn mirror mặc định"
 
-echo "[*] Xóa các file lock apt/dpkg nếu có..."
+# Tạo symlink tới mirror mặc định
+ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
+echo "[*] Đã chọn mirror mặc định."
+
+# Xoá file lock để tránh lỗi apt/dpkg
 rm -f $PREFIX/var/lib/dpkg/lock $PREFIX/var/lib/dpkg/lock-frontend $PREFIX/var/lib/apt/lists/lock $PREFIX/var/cache/apt/archives/lock
 
-echo "[*] Cố gắng sửa lỗi dpkg nếu có..."
+# Cố gắng sửa lỗi dpkg nếu có
 dpkg --configure -a || true
 
-echo "[*] Làm sạch apt cache..."
+# Dọn dẹp cache apt
 apt clean || true
 
-echo "[*] Cài đặt binutils để có lệnh 'ar' nếu thiếu..."
+# Cài binutils để có lệnh ar (giúp dpkg hoạt động)
 pkg install -y binutils
 
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
-pkg upgrade -y &
+pkg upgrade -y
 
 echo "[*] Kiểm tra ~/storage..."
 if [ -e "$HOME/storage" ] && [ ! -L "$HOME/storage" ]; then
     echo "[!] ~/storage là thư mục thật. Đang xóa để tạo symlink chuẩn..."
     rm -rf "$HOME/storage"
-else
-    echo "[*] ~/storage là symlink hoặc không tồn tại. Bỏ qua."
 fi
 
 echo "[*] Thiết lập quyền truy cập bộ nhớ..."
@@ -45,8 +48,8 @@ termux-setup-storage
 echo "[*] Cài đặt các gói cần thiết..."
 pkg install -y python tsu libexpat openssl
 
-echo "[*] Cài đặt các thư viện Python..."
-pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
+echo "[*] Cài đặt các thư viện Python cần thiết..."
+pip install --no-cache-dir requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
 
 echo
 read -p "[?] Nhập link MediaFire (.7z) để tải hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
