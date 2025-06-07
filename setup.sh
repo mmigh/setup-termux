@@ -5,15 +5,15 @@ set -x
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-# Xử lý ~/storage nếu không phải symlink
+# Xử lý ~/storage để không lỗi khi gọi termux-setup-storage
 if [ -e ~/storage ] && [ ! -L ~/storage ]; then
-    echo "[!] Thư mục ~/storage tồn tại nhưng không phải là symlink. Đang xóa để tạo lại..."
+    echo "[!] ~/storage là thư mục thật. Đang xóa để tạo symlink chuẩn..."
     rm -rf ~/storage
 fi
 
-if [ ! -e ~/storage ]; then
-    echo "[*] Đang chạy termux-setup-storage để tạo ~/storage mới..."
-    termux-setup-storage
+# Gọi lại bình thường
+termux-setup-storage
+
 else
     echo "[*] ~/storage đã tồn tại và đúng định dạng, bỏ qua."
 fi
