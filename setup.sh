@@ -1,47 +1,65 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-set -e  # Nếu có lỗi script sẽ dừng ngay
+set -e
+set -x
 
-# Hàm chọn mirror mặc định (tương tự script bạn gửi)
-select_default_mirror() {
-    MIRROR_BASE_DIR="/data/data/com.termux/files/usr/etc/termux/mirrors"
-    local chosen_link="/data/data/com.termux/files/usr/etc/termux/chosen_mirrors"
+echo "[*] Bắt đầu thiết lập Termux..."
 
-    if [ -L "$chosen_link" ]; then
-        unlink "$chosen_link"
+termux-setup-storage
+
+# Cài mediafire-dl nếu chưa có
+pip show mediafire-dl >/dev/null 2>&1 || pip install mediafire-dl
+
+# Nhập link MediaFire từ người dùng
+read -p "[?] Nhập link MediaFire (.7z): " MF_LINK
+
+# Thư mục lưu file
+DEST_DIR=~/storage/downloads
+extracted=0
+ARCHIVE_PATH=""
+
+# Bắt đầu tải file
+echo "[*] Đang tải file .7z từ MediaFire..."
+mediafire-dl "$MF_LINK" -o "$DEST_DIR" &
+
+download_pid=$!
+
+# Cài đặt các gói nền
+(
+  pkg update -y && pkg upgrade -y
+  pkg install python tsu libexpat openssl p7zip -y
+  pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
+) &
+
+install_pid=$!
+
+# Theo dõi file mới nhất trong downloads
+echo "[*] Giám sát thư mục downloads để giải nén khi sẵn sàng..."
+
+while kill -0 $download_pid 2>/dev/null; do
+  # Tìm file .7z mới nhất
+  ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
+  
+  # Nếu file tồn tại và đủ lớn thì giải nén
+  if [ -n "$ARCHIVE_PATH" ] && [ -f "$ARCHIVE_PATH" ] && [ $(stat -c%s "$ARCHIVE_PATH") -gt 100000 ]; then
+    if [ $extracted -eq 0 ]; then
+      echo "[*] Đang giải nén: $ARCHIVE_PATH"
+      7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
+      echo "[✓] Giải nén xong!"
+      extracted=1
     fi
-    ln -s "${MIRROR_BASE_DIR}/all" "$chosen_link"
-    echo "[*] Mirror set to 'all'"
-}
+  fi
+  sleep 3
+done
 
-# Kiểm tra apt có tồn tại không
-if ! command -v apt >/dev/null 2>&1; then
-    echo "Error: apt không được cài đặt. Thoát."
-    exit 1
+# Nếu tải xong mà chưa giải nén thì làm ngay
+if [ $extracted -eq 0 ]; then
+  echo "[*] Tải xong, giải nén ngay..."
+  ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
+  7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
+  echo "[✓] Giải nén hoàn tất!"
 fi
 
-# Thực hiện chọn mirror
-select_default_mirror
+wait $install_pid
 
-# Cập nhật repo của pkg với mirror mới
-echo "[*] Cập nhật repo với mirror mới"
-TERMUX_APP_PACKAGE_MANAGER=apt pkg --check-mirror update
-
-# Cập nhật và nâng cấp gói
-echo "[*] Cập nhật và nâng cấp gói hệ thống"
-pkg update -y
-pkg upgrade -y
-
-# Cấp quyền truy cập bộ nhớ
-echo "[*] Cấp quyền truy cập bộ nhớ (termux-setup-storage)"
-echo "y" | termux-setup-storage
-
-# Cài đặt các gói cần thiết
-echo "[*] Cài đặt các gói cần thiết"
-pkg install -y python tsu libexpat openssl
-
-# Cài đặt các thư viện Python cần thiết
-echo "[*] Cài đặt các thư viện Python qua pip"
-pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
-
-echo "[*] Hoàn thành setup Termux tự động."
+echo "[✓] Tất cả đã hoàn tất!"
