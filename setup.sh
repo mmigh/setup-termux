@@ -24,6 +24,7 @@ apt clean || true
 echo "[*] Kiểm tra lỗi thiếu liblz4..."
 if ! ldd /data/data/com.termux/files/usr/bin/apt | grep -q liblz4.so.1; then
     echo "[!] Thiếu liblz4.so.1, đang vá..."
+    pkg install -y binutils
     curl -LO https://packages.termux.org/apt/termux-main/pool/main/libl/liblz4/liblz4_1.9.4-1_aarch64.deb
     ar x liblz4_1.9.4-1_aarch64.deb
     tar -xf data.tar.xz
