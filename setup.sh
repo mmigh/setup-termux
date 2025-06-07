@@ -4,27 +4,19 @@ set -e
 set -x
 
 echo "[*] Bắt đầu thiết lập Termux..."
-
 termux-setup-storage
 
-# Cài mediafire-dl nếu chưa có
+# Cài mediafire-dl nếu chưa
 pip show mediafire-dl >/dev/null 2>&1 || pip install mediafire-dl
 
-# Nhập link MediaFire từ người dùng
-read -p "[?] Nhập link MediaFire (.7z): " MF_LINK
+# Nhập link MediaFire (hoặc bỏ trống để skip)
+read -p "[?] Nhập link MediaFire (.7z) hoặc nhấn Enter để bỏ qua: " MF_LINK
 
-# Thư mục lưu file
 DEST_DIR=~/storage/downloads
-extracted=0
 ARCHIVE_PATH=""
+extracted=0
 
-# Bắt đầu tải file
-echo "[*] Đang tải file .7z từ MediaFire..."
-mediafire-dl "$MF_LINK" -o "$DEST_DIR" &
-
-download_pid=$!
-
-# Cài đặt các gói nền
+# Cài đặt song song gói cần thiết
 (
   pkg update -y && pkg upgrade -y
   pkg install python tsu libexpat openssl p7zip -y
@@ -33,33 +25,37 @@ download_pid=$!
 
 install_pid=$!
 
-# Theo dõi file mới nhất trong downloads
-echo "[*] Giám sát thư mục downloads để giải nén khi sẵn sàng..."
+# Nếu người dùng nhập link MediaFire
+if [ -n "$MF_LINK" ]; then
+  echo "[*] Đang tải file .7z từ MediaFire..."
+  mediafire-dl "$MF_LINK" -o "$DEST_DIR" &
 
-while kill -0 $download_pid 2>/dev/null; do
-  # Tìm file .7z mới nhất
-  ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
-  
-  # Nếu file tồn tại và đủ lớn thì giải nén
-  if [ -n "$ARCHIVE_PATH" ] && [ -f "$ARCHIVE_PATH" ] && [ $(stat -c%s "$ARCHIVE_PATH") -gt 100000 ]; then
-    if [ $extracted -eq 0 ]; then
-      echo "[*] Đang giải nén: $ARCHIVE_PATH"
-      7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
-      echo "[✓] Giải nén xong!"
-      extracted=1
+  download_pid=$!
+
+  while kill -0 $download_pid 2>/dev/null; do
+    ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
+
+    if [ -n "$ARCHIVE_PATH" ] && [ -f "$ARCHIVE_PATH" ] && [ $(stat -c%s "$ARCHIVE_PATH") -gt 100000 ]; then
+      if [ $extracted -eq 0 ]; then
+        echo "[*] File đã sẵn sàng, giải nén..."
+        7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
+        echo "[✓] Giải nén hoàn tất!"
+        extracted=1
+      fi
     fi
-  fi
-  sleep 3
-done
+    sleep 3
+  done
 
-# Nếu tải xong mà chưa giải nén thì làm ngay
-if [ $extracted -eq 0 ]; then
-  echo "[*] Tải xong, giải nén ngay..."
-  ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
-  7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
-  echo "[✓] Giải nén hoàn tất!"
+  if [ $extracted -eq 0 ]; then
+    echo "[*] Tải xong, tiến hành giải nén..."
+    ARCHIVE_PATH=$(find "$DEST_DIR" -maxdepth 1 -name "*.7z" -printf "%T@ %p\n" | sort -n | tail -1 | cut -d' ' -f2-)
+    7z x "$ARCHIVE_PATH" -o"$DEST_DIR"
+    echo "[✓] Giải nén hoàn tất!"
+  fi
+else
+  echo "[*] Bạn đã chọn bỏ qua bước tải & giải nén file .7z."
 fi
 
 wait $install_pid
 
-echo "[✓] Tất cả đã hoàn tất!"
+echo "[✓] Thiết lập hoàn tất!"
