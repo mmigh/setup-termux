@@ -3,9 +3,6 @@ set -e
 
 echo "[*] Bắt đầu thiết lập Termux..."
 
-# ============================
-# Mirror Setup
-# ============================
 MIRROR_BASE_DIR="/data/data/com.termux/files/usr/etc/termux/mirrors"
 CHOSEN_LINK="/data/data/com.termux/files/usr/etc/termux/chosen_mirrors"
 
@@ -15,70 +12,58 @@ fi
 ln -s "${MIRROR_BASE_DIR}/all" "$CHOSEN_LINK"
 echo "[*] Đã chọn mirror mặc định"
 
-# ============================
-# Update & Upgrade
-# ============================
 echo "[*] Cập nhật hệ thống..."
 pkg update -y
-pkg upgrade -y
+pkg upgrade -y &
 
-# ============================
-# Setup Storage
-# ============================
+# xử lý ~/storage
 echo "[*] Kiểm tra ~/storage..."
-
 if [ -e "$HOME/storage" ] && [ ! -L "$HOME/storage" ]; then
     echo "[!] ~/storage là thư mục thật. Đang xóa để tạo symlink chuẩn..."
     rm -rf "$HOME/storage"
+else
+    echo "[*] ~/storage là symlink hoặc không tồn tại. Bỏ qua."
 fi
 
 echo "[*] Thiết lập quyền truy cập bộ nhớ..."
 termux-setup-storage
 
-# ============================
-# Cài đặt gói và thư viện cần thiết
-# ============================
-echo "[*] Cài đặt gói..."
-pkg install -y python tsu libexpat openssl
-echo "[*] Cài pip packages..."
-pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
+# cài gói cần thiết (chạy song song với tải file)
+pkg install -y python tsu libexpat openssl &
 
-# ============================
-# Tùy chọn: Tải file từ MediaFire
-# ============================
+# cài pip package (chạy song song với tải file)
+pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio &
+
+# hỏi link mediafire
 echo
-read -p "[?] Nhập link MediaFire (.7z chứa file apk/py...) hoặc nhấn Enter để bỏ qua: " MEDIAFIRE_LINK
+read -p "[?] Nhập link MediaFire (.7z) hoặc Enter để bỏ qua: " MEDIAFIRE_LINK
 
+DOWNLOAD_PATH=""
 if [ -n "$MEDIAFIRE_LINK" ]; then
-    echo "[*] Đang tải file từ MediaFire..."
-    
     FILE_NAME=$(basename "$MEDIAFIRE_LINK")
     DOWNLOAD_PATH="$HOME/storage/downloads/$FILE_NAME"
-
+    echo "[*] Đang tải file từ MediaFire..."
     curl -L "$MEDIAFIRE_LINK" -o "$DOWNLOAD_PATH"
-
     echo "[*] Đã tải xong: $DOWNLOAD_PATH"
 
-    # ============================
-    # Giải nén file .7z nếu có
-    # ============================
-    if command -v 7z >/dev/null 2>&1; then
-        echo "[*] Giải nén $FILE_NAME..."
-        7z x "$DOWNLOAD_PATH" -o"$HOME/storage/downloads" -y
-    else
-        echo "[!] Chưa cài đặt 7z, đang cài..."
+    # Kiểm tra 7z, cài nếu chưa có
+    if ! command -v 7z >/dev/null 2>&1; then
+        echo "[*] Đang cài p7zip để giải nén..."
         pkg install -y p7zip
-        7z x "$DOWNLOAD_PATH" -o"$HOME/storage/downloads" -y
     fi
+
+    # Giải nén song song
+    echo "[*] Bắt đầu giải nén $FILE_NAME vào ~/storage/downloads ..."
+    7z x "$DOWNLOAD_PATH" -o"$HOME/storage/downloads" -y &
 fi
 
-# ============================
-# Nếu máy đã root, cài .apk
-# ============================
-if command -v su >/dev/null 2>&1; then
-    echo "[*] Thiết bị đã root. Đang tìm file APK trong Downloads..."
+# đợi các job background hoàn thành
+wait
 
-    find "$HOME/storage/downloads" -type f -name "*.apk" | while read apk; do
+# nếu có root thì cài apk trong downloads
+if command -v su >/dev/null 2>&1; then
+    echo "[*] Thiết bị đã root. Tự động cài các file APK trong ~/storage/downloads..."
+    find "$HOME/storage/downloads" -type f -name "*.apk" | while read -r apk; do
         echo "[*] Cài đặt APK: $apk"
         su -c "pm install -r '$apk'"
     done
