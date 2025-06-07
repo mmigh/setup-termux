@@ -1,23 +1,24 @@
 #!/bin/bash
 
-# Xóa storage nếu đã được mount
+# Xóa liên kết bộ nhớ cũ nếu có
 if [ -e "/data/data/com.termux/files/home/storage" ]; then
-	rm -rf /data/data/com.termux/files/home/storage
+    rm -rf /data/data/com.termux/files/home/storage
 fi
 
+# Thiết lập quyền truy cập bộ nhớ
 termux-setup-storage
 
+# Cập nhật gói và thêm root/x11 repo để tránh lỗi mirror
 yes | pkg update
+yes | pkg install root-repo x11-repo -y
 
-. <(curl -s https://raw.githubusercontent.com/u400822/setup-termux/refs/heads/main/termux-change-repo.sh)
+# Tự động đổi repo thông qua script GitHub
+. <(curl -fsSL https://raw.githubusercontent.com/u400822/setup-termux/refs/heads/main/termux-change-repo.sh)
 
+# Nâng cấp gói và cài đặt công cụ cần thiết
 yes | pkg upgrade
-yes | pkg install python
-yes | pkg install android-tools
-yes | pkg install python-pip
-yes | pkg install tsu libexpat openssl
+yes | pkg install python android-tools python-pip -y
 
+# Cài đặt các thư viện Python bạn cần
 pip install --upgrade pip
-yes | pip install --no-input requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio prettytable
-
-echo -e "\n✅ Đã hoàn tất cài đặt toàn bộ môi trường!"
+pip install requests psutil prettytable pytz pyjwt pycryptodome rich colorama flask discord python-socketio
