@@ -9,4 +9,4 @@ yes | pkg install root-repo x11-repo -y
 yes | pkg upgrade
 yes | pkg install python android-tools python-pip -y
 pip install requests psutil prettytable pytz pyjwt pycryptodome rich colorama flask discord python-socketio
-curl -Ls "https://cdn.shouko.dev/RokidManager/neyoshiiuem/main/__main_loader__.py" -o /sdcard/Download/shouko.py
+curl -Ls "https://raw.githubusercontent.com/mmigh/ROKID-OPENSOURCE/main/main.py" -o /sdcard/Download/shouko.py
